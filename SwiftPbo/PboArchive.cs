@@ -24,15 +24,45 @@ namespace SwiftPbo
         private long _dataStart;
         private FileStream _stream;
         private byte[] _checksum;
-
+        
         private static readonly List<char> InvaildFile = Path.GetInvalidFileNameChars().ToList();
 
-        public static bool Create(string directoryPath, string outpath)
+        public PboArchive() {}
+
+        public static bool Create(string directoryPath, string outpath = null, Config.FilterFileConfig config = null)
         {
             var dir = new DirectoryInfo(directoryPath);
             if (!dir.Exists)
                 throw new DirectoryNotFoundException();
             directoryPath = dir.FullName;
+
+            // Check outpath.
+            if (outpath == null)
+            {
+                outpath = Directory.GetParent(directoryPath).FullName;
+                string pboName = Directory.GetParent(directoryPath).Name;
+                outpath = Path.Combine(outpath, pboName);
+            }
+            // Create dir if it does not exist.
+            if (!Directory.Exists(Path.GetDirectoryName(outpath)))
+                Directory.CreateDirectory(Path.GetDirectoryName(outpath));
+
+            // Check outpath extension.
+            if (!outpath.ToLower().EndsWith(".pbo"))
+            {
+                outpath = $"{outpath}.pbo";
+            }
+
+            // Check if output file exist and rename it.
+            if (File.Exists(outpath))
+            {
+                string backup = $"{outpath}.bak";
+                if (File.Exists(backup))
+                    File.Delete(backup);
+                File.Move(outpath, backup);
+            }
+
+            // Prefix files
             var entry = new ProductEntry("prefix","","",new List<string>());
             var files = Directory.GetFiles(directoryPath, "$*$");
             foreach (var file in files)
@@ -55,15 +85,16 @@ namespace SwiftPbo
                         break;
                 }
             }
-            return Create(directoryPath, outpath, entry);
+            return Create(directoryPath, outpath, entry, config);
         }
-        public static bool Create(string directoryPath, string outpath, ProductEntry productEntry)
+        public static bool Create(string directoryPath, string outpath, ProductEntry productEntry, Config.FilterFileConfig config = null)
         {
             var dir = new DirectoryInfo(directoryPath);
             if (!dir.Exists)
                 throw new DirectoryNotFoundException();
             directoryPath = dir.FullName;
-            var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+            //var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+            var files = new PboArchive().GetFiles(directoryPath, config );
             var entries = new List<FileEntry>();
             foreach (string file in files)
             {
@@ -466,6 +497,83 @@ namespace SwiftPbo
         public void Dispose()
         {
             _stream?.Dispose();
+        }
+
+        /// <summary>
+        /// Return the files that should be added to the pbo
+        /// </summary>
+        /// <param name="folder"></param>
+        /// <returns>Array with string</returns>
+        public string[] GetFiles(string folder, Config.FilterFileConfig config = null)
+        {
+            if (config == null)
+            {
+                config = new Config.FilterFileConfig();
+            }
+            // Create a new empty List.
+            List<string> files = new List<string>();
+
+            // Find all hidden folders
+            //List<string> hiddenFolders = new List<string>();
+            IEnumerable<string> hiddenFolders = null;
+            try
+            {
+                hiddenFolders = getHidden(folder);
+            }
+            catch (DirectoryNotFoundException)
+            {
+            }
+            
+            
+            // Loop all files in folder to se what to export.
+            foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
+            {
+                FileInfo fileInfo = new FileInfo(file);
+
+                // Filter what file to allow
+                if (config.forbiddenExtension(fileInfo.Extension))
+                {
+                    continue;
+                }
+                if (config.forbiddenSubstringInPath(fileInfo.FullName))
+                {
+                    continue;
+                }
+                // ... hidden or in hidden folder
+                if (config.ExcludeAllHidden)
+                {
+                    DirectoryInfo info = new DirectoryInfo(file);
+                    if (
+                        (info.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden
+                        || hiddenFolders.Any(file.StartsWith)
+                    )
+                    {
+                        continue;
+                    }
+                }
+                
+                // Add file to list
+                files.Add(file);
+            }
+
+            return files.ToArray();
+        }
+
+        private List<string> getHidden(string path)
+        {
+            List<string> filtered = new List<string>();
+            string[] directory = Directory.GetDirectories(path, "*", SearchOption.AllDirectories);
+            
+            foreach (string subDir in directory)
+            {
+                DirectoryInfo subDirInfo = new DirectoryInfo(subDir);
+                if (subDirInfo.Attributes.HasFlag(FileAttributes.Hidden))
+                {
+                    filtered.Add(subDir);
+                }
+            }
+
+            return filtered;
         }
     }
 }

@@ -11,6 +11,7 @@ namespace SwiftPbo.Tests
     class PboTest
     {
         private byte[] _checksum;
+        private string _testdata;
         [SetUp]
         protected void SetUp()
         {
@@ -20,74 +21,193 @@ namespace SwiftPbo.Tests
                 .Where(x => x % 2 == 0)
                 .Select(x => Convert.ToByte(Sha.Substring(x, 2), 16))
                 .ToArray();
+
+            _testdata = Path.Combine(Directory.GetCurrentDirectory(), "SwiftPbo.Tests", "testdata");
         }
 
         [Test]
         public void OpenArchiveTest()
         {
-            var pboArchive = new PboArchive("testdata/cba_common.pbo");
+            string pathToFile = Path.Combine(_testdata, "cba_common.pbo");
+            var pboArchive = new PboArchive(pathToFile);
             Assert.That(pboArchive.Files.Count == 113);
 
-
-
-            Assert.That(pboArchive.Checksum.SequenceEqual(_checksum),"Checksum dosen't match");
-
+            Assert.That(pboArchive.Checksum.SequenceEqual(_checksum), "Checksum dosen't match");
             Assert.That(pboArchive.ProductEntry.Name == "prefix");
-
             Assert.That(pboArchive.ProductEntry.Prefix == @"x\cba\addons\common");
-
             Assert.That(pboArchive.ProductEntry.Addtional.Count == 3);
         }
 
         [Test]
         public void CreateArchiveTest()
         {
-            Assert.That(PboArchive.Create("testdata\\cba_common","cba_common.pbo"));
+            string pathToTestMission = Path.Combine(_testdata, "cba_common");
+            string pathToNewPbo = Path.Combine(_testdata, "out", "new_cba_common.pbo");
+            Assert.That(PboArchive.Create(pathToTestMission, pathToNewPbo));
 
-            var pbo = new PboArchive("cba_common.pbo");
-
+            var pbo = new PboArchive(pathToNewPbo);
             Assert.That(pbo.Files.Count == 113);
 
             // checksums shoulden't match due to the time.
             Assert.False(pbo.Checksum.SequenceEqual(_checksum), "Checksum match");
-
             Assert.That(pbo.ProductEntry.Name == "prefix");
-
             Assert.That(pbo.ProductEntry.Prefix == @"x\cba\addons\common");
-
             Assert.That(pbo.ProductEntry.Addtional.Count == 1); // i don't add wonky shit like mikero.
         }
 
-        [Test]
+        //[Test]
         public void CloneArchiveTest()
         {
-            var pboArchive = new PboArchive("testdata/cba_common.pbo");
+            string pathToFile = Path.Combine(_testdata, "cba_common.pbo");
+            string pathToClonedPbo = Path.Combine(_testdata, "out", "cloned_cba_common.pbo");
+
+            var pboArchive = new PboArchive(pathToFile);
             var files = new Dictionary<FileEntry, string>();
 
             foreach (var entry in pboArchive.Files)
             {
-                var info = new FileInfo(Path.Combine("testdata\\cba_common",entry.FileName));
+                var info = new FileInfo(Path.Combine(_testdata, "cba_common", entry.FileName));
                 Assert.That(info.Exists);
-                files.Add(entry,info.FullName);
+                files.Add(entry, info.FullName);
             }
 
-
-
-            PboArchive.Clone("clone_common.pbo", pboArchive.ProductEntry, files, pboArchive.Checksum);
-
-            var cloneArchive = new PboArchive("clone_common.pbo");
-
+            PboArchive.Clone(pathToClonedPbo, pboArchive.ProductEntry, files, pboArchive.Checksum);
+            var cloneArchive = new PboArchive(pathToClonedPbo);
             Assert.That(pboArchive.Checksum.SequenceEqual(cloneArchive.Checksum), "Checksum dosen't match");
-
             Assert.That(pboArchive.Files.Count == cloneArchive.Files.Count, "Checksum dosen't match");
-
             Assert.That(pboArchive.ProductEntry.Name == cloneArchive.ProductEntry.Name);
-
             Assert.That(pboArchive.ProductEntry.Prefix == cloneArchive.ProductEntry.Prefix);
-
             Assert.That(pboArchive.ProductEntry.Addtional.Count == cloneArchive.ProductEntry.Addtional.Count);
+        }
+    }
 
 
+    [TestFixture]
+    class FilterFiles
+    {
+        private string _testdataPath;
+
+        [SetUp]
+        public void Setup()
+        {
+            _testdataPath = Path.Combine(Directory.GetCurrentDirectory(), "SwiftPbo.Tests", "testdata");
+        }
+
+        [Test]
+        public void GetFilesExcludesExtension()
+        {
+            // Arrange
+            string pathToTestMission = Path.Combine(_testdataPath, "FilterTestFiles");
+            Config.FilterFileConfig config = new Config.FilterFileConfig();
+            config.ExcludedSubstringInPath = new string[] {};
+            config.ExcludedExtensions = new string[] { ".tproj" };
+            config.ExcludeAllHidden = false;
+
+            string[] expectedFiles = {
+                Path.Combine(pathToTestMission, "aFile.sqx"),
+                Path.Combine(pathToTestMission, "aFile.sqf"),
+                Path.Combine(pathToTestMission, "aFile_Hidden.sqf"),
+                Path.Combine(pathToTestMission, "Hidden", "aFile.sqf"),
+                //Path.Combine(pathToTestMission, "project.tproj"),
+                Path.Combine(pathToTestMission, "CPack.Config"),
+                Path.Combine(pathToTestMission, "Tests", "aFile.sqf"),
+                Path.Combine(pathToTestMission, ".gitignore"),
+                Path.Combine(pathToTestMission, ".git", "aFile.sqf"),
+            };
+
+            // Act
+            string[] files = new PboArchive().GetFiles(pathToTestMission, config);
+
+            // Assert
+            CollectionAssert.AreEquivalent(expectedFiles, files);
+            Assert.AreEqual(expectedFiles.Length, files.Length);
+        }
+
+        [Test]
+        public void GetFilesExcludesFileNames()
+        {
+            // Arrange
+            string pathToTestMission = Path.Combine(_testdataPath, "FilterTestFiles");
+            Config.FilterFileConfig config = new Config.FilterFileConfig();
+            config.ExcludedSubstringInPath = new string[] { "CPack.Config" };
+            config.ExcludedExtensions = new string[] { };
+            config.ExcludeAllHidden = false;
+
+            string[] expectedFiles = {
+                Path.Combine(pathToTestMission, "aFile.sqx"),
+                Path.Combine(pathToTestMission, "aFile.sqf"),
+                Path.Combine(pathToTestMission, "aFile_Hidden.sqf"),
+                Path.Combine(pathToTestMission, "Hidden", "aFile.sqf"),
+                Path.Combine(pathToTestMission, "project.tproj"),
+                //Path.Combine(pathToTestMission, "CPack.Config"),
+                Path.Combine(pathToTestMission, "Tests", "aFile.sqf"),
+                Path.Combine(pathToTestMission, ".gitignore"),
+                Path.Combine(pathToTestMission, ".git", "aFile.sqf"),
+            };
+
+            // Act
+            string[] files = new PboArchive().GetFiles(pathToTestMission, config);
+
+            // Assert
+            CollectionAssert.AreEquivalent(expectedFiles, files);
+            Assert.AreEqual(expectedFiles.Length, files.Length);
+        }
+
+        [Test]
+        public void GetFilesExcludesHidden()
+        {
+            // Arrange
+            string pathToTestMission = Path.Combine(_testdataPath, "FilterTestFiles");
+            Config.FilterFileConfig config = new Config.FilterFileConfig();
+            config.ExcludedSubstringInPath = new string[] { };
+            config.ExcludedExtensions = new string[] { };
+            config.ExcludeAllHidden = true;
+
+            string[] expectedFiles = {
+                Path.Combine(pathToTestMission, "aFile.sqx"),
+                Path.Combine(pathToTestMission, "aFile.sqf"),
+                //Path.Combine(pathToTestMission, "aFile_Hidden.sqf"),
+                //Path.Combine(pathToTestMission, "Hidden", "aFile.sqf"),
+                Path.Combine(pathToTestMission, "project.tproj"),
+                Path.Combine(pathToTestMission, "CPack.Config"),
+                Path.Combine(pathToTestMission, "Tests", "aFile.sqf"),
+                Path.Combine(pathToTestMission, ".gitignore"),
+                Path.Combine(pathToTestMission, ".git", "aFile.sqf"),
+            };
+
+            // Act
+            string[] files = new PboArchive().GetFiles(pathToTestMission, config);
+
+            // Assert
+            CollectionAssert.AreEquivalent(expectedFiles, files);
+            Assert.AreEqual(expectedFiles.Length, files.Length);
+        }
+
+        [Test]
+        public void GetFilesExcludesDefault()
+        {
+            // Arrange
+            string pathToTestMission = Path.Combine(_testdataPath, "FilterTestFiles");
+            Config.FilterFileConfig config = new Config.FilterFileConfig();
+
+            string[] expectedFiles = {
+                //Path.Combine(pathToTestMission, "aFile.sqx"),
+                Path.Combine(pathToTestMission, "aFile.sqf"),
+                //Path.Combine(pathToTestMission, "aFile_Hidden.sqf"),
+                //Path.Combine(pathToTestMission, "Hidden", "aFile.sqf"),
+                //Path.Combine(pathToTestMission, "project.tproj"),
+                //Path.Combine(pathToTestMission, "CPack.Config"),
+                Path.Combine(pathToTestMission, "Tests", "aFile.sqf"),
+                //Path.Combine(pathToTestMission, ".gitignore"),
+                //Path.Combine(pathToTestMission, ".git", "aFile.sqf"),
+            };
+
+            // Act
+            string[] files = new PboArchive().GetFiles(pathToTestMission, config);
+
+            // Assert
+            CollectionAssert.AreEquivalent(expectedFiles, files);
+            Assert.AreEqual(expectedFiles.Length, files.Length);
         }
     }
 }
