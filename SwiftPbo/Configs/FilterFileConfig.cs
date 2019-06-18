@@ -2,7 +2,7 @@
  *  This file is part of SwiftPbo.
  *  
  *  Copyright 2019 by Josef Fällman
- *  Licensed under Lesser GNU General Public License 3.0
+ *  Licensed under GNU Lesser General Public License 3.0
  *  
  */
 
@@ -46,14 +46,31 @@ namespace SwiftPbo.Config
             ExcludeAllHidden = true;
         }
 
+
+        /// <summary>
+        /// All file extension that should be excluded from pbo.
+        /// All extensions starts with a (.)dot
+        /// Array of strings.
+        /// </summary>
         public string[] ExcludedExtensions {
             get { return _excludedExtensions.ToArray(); }
             set { _excludedExtensions = value.ToList(); }
         }
+
+        /// <summary>
+        /// All filenames or folders that should be excluded from pbo.
+        /// If filepath contains these strings they will be left out.
+        /// Array of strings.
+        /// </summary>
         public string[] ExcludedSubstringInPath {
             get { return _excludedSubstringInPath.ToArray(); }
             set { _excludedSubstringInPath = value.ToList(); }
         }
+
+        /// <summary>
+        /// If hidden file and folders should be excluded from pbo.
+        /// Boolean.
+        /// </summary>
         public Boolean ExcludeAllHidden {
             get; set;
         }

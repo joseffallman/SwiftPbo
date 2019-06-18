@@ -188,8 +188,7 @@ namespace SwiftPbo.Tests
         {
             // Arrange
             string pathToTestMission = Path.Combine(_testdataPath, "FilterTestFiles");
-            Config.FilterFileConfig config = new Config.FilterFileConfig();
-
+            
             string[] expectedFiles = {
                 //Path.Combine(pathToTestMission, "aFile.sqx"),
                 Path.Combine(pathToTestMission, "aFile.sqf"),
@@ -203,7 +202,7 @@ namespace SwiftPbo.Tests
             };
 
             // Act
-            string[] files = new PboArchive().GetFiles(pathToTestMission, config);
+            string[] files = new PboArchive().GetFiles(pathToTestMission);
 
             // Assert
             CollectionAssert.AreEquivalent(expectedFiles, files);

@@ -1,3 +1,12 @@
+/*
+ *  This file is part of SwiftPbo.
+ *  
+ *  Copyright 2015-2016, 2018 by headswe
+ *  Copyright 2018 by dedmen
+ *  
+ *  Licensed under GNU Lesser General Public License 3.0
+ *  
+ */
 using System;
 using System.Collections.Generic;
 using System.Globalization;
