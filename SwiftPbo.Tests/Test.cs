@@ -55,6 +55,24 @@ namespace SwiftPbo.Tests
             Assert.That(pbo.ProductEntry.Addtional.Count == 1); // i don't add wonky shit like mikero.
         }
 
+        [Test]
+        public void CreateArchiveTest2()
+        {
+            string pathToTestMission = @"C:\Users\Josef\Desktop\TestPBO\Intrusion.Stratis";
+            string pathToNewPbo = @"C:\Users\Josef\Desktop\TestPBO\mpMission\Intrusion.Stratis.pbo";
+            Assert.That(PboArchive.Create(pathToTestMission, pathToNewPbo));
+            /*
+            var pbo = new PboArchive(pathToNewPbo);
+            Assert.That(pbo.Files.Count == 113);
+
+            // checksums shoulden't match due to the time.
+            Assert.False(pbo.Checksum.SequenceEqual(_checksum), "Checksum match");
+            Assert.That(pbo.ProductEntry.Name == "prefix");
+            Assert.That(pbo.ProductEntry.Prefix == @"x\cba\addons\common");
+            Assert.That(pbo.ProductEntry.Addtional.Count == 1); // i don't add wonky shit like mikero.
+            */
+        }
+
         //[Test]
         public void CloneArchiveTest()
         {
