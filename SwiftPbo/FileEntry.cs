@@ -84,8 +84,8 @@ namespace SwiftPbo
         {
             if(ParentArchive == null)
                 throw  new Exception("No parent Archive");
-            if (!Directory.Exists(Path.GetDirectoryName(outpath)))
-                Directory.CreateDirectory(Path.GetDirectoryName(outpath));
+            if (!Directory.Exists(System.IO.Path.GetDirectoryName(outpath)))
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(outpath));
             return ParentArchive.Extract(this, outpath);
         }
 

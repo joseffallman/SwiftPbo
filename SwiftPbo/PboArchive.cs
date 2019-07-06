@@ -46,7 +46,7 @@ namespace SwiftPbo
 
     public class PboArchive : IDisposable
     {
-        private ProductEntry _productEntry = new ProductEntry("", "", "", new List<string>());
+        private ProductEntry _productEntry = new ProductEntry("", "", "", new List<Additional>());
         private List<FileEntry> _files = new List<FileEntry>();
         private string _path;
         private long _dataStart;
@@ -59,26 +59,62 @@ namespace SwiftPbo
 
         public static bool Create(string directoryPath, string outpath = null, Config.FilterFileConfig config = null)
         {
+            // Prefix files
+            var pboHeader = new ProductEntry("prefix","","",new List<Additional>());
+            var files = Directory.GetFiles(directoryPath, "$*$");
+            foreach (var file in files)
+            {
+                var varname = System.IO.Path.GetFileNameWithoutExtension(file).Trim('$');
+                var data = File.ReadAllText(file).Split('\n')[0];
+                switch (varname.ToLowerInvariant())
+                {
+                    case "pboprefix":
+                        pboHeader.Prefix = data;
+                        break;
+                    case "prefix":
+                        pboHeader.Prefix = data;
+                        break;
+                    case "version":
+                        pboHeader.ProductVersion = data;
+                        break;
+                    default:
+                        pboHeader.Addtional.Add(new Additional(varname, data));
+                        break;
+                }
+            }
+            return Create(directoryPath, outpath, pboHeader, config);
+        }
+        public static bool Create(string directoryPath, string outpath, ProductEntry productEntry, Config.FilterFileConfig config = null)
+        {
             var dir = new DirectoryInfo(directoryPath);
             if (!dir.Exists)
                 throw new DirectoryNotFoundException();
             directoryPath = dir.FullName;
 
             // Check outpath.
-            if (outpath == null)
+            if (string.IsNullOrEmpty(outpath))
             {
                 outpath = Directory.GetParent(directoryPath).FullName;
-                string pboName = Directory.GetParent(directoryPath).Name;
-                outpath = Path.Combine(outpath, pboName);
             }
             // Create dir if it does not exist.
-            if (!Directory.Exists(Path.GetDirectoryName(outpath)))
-                Directory.CreateDirectory(Path.GetDirectoryName(outpath));
-
-            // Check outpath extension.
-            if (!outpath.ToLower().EndsWith(".pbo"))
+            else if (!Directory.Exists(System.IO.Path.GetDirectoryName(outpath)))
             {
-                outpath = $"{outpath}.pbo";
+                try
+                {
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(outpath));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    return false;
+                }
+
+            }
+
+            // Check file extension, otherwise add extension.
+            if (!outpath.ToLower().EndsWith(".pbo")) { 
+                string pboName = Directory.GetParent(directoryPath).Name + ".pbo";
+                outpath = System.IO.Path.Combine(outpath, pboName);
             }
 
             // Check if output file exist and rename it.
@@ -89,49 +125,21 @@ namespace SwiftPbo
                     File.Delete(backup);
                 File.Move(outpath, backup);
             }
+            
 
-            // Prefix files
-            var entry = new ProductEntry("prefix","","",new List<string>());
-            var files = Directory.GetFiles(directoryPath, "$*$");
-            foreach (var file in files)
-            {
-                var varname = Path.GetFileNameWithoutExtension(file).Trim('$');
-                var data = File.ReadAllText(file).Split('\n')[0];
-                switch (varname.ToLowerInvariant())
-                {
-                    case "pboprefix":
-                        entry.Prefix = data;
-                        break;
-                    case "prefix":
-                        entry.Prefix = data;
-                        break;
-                    case "version":
-                        entry.ProductVersion = data;
-                        break;
-                    default:
-                        entry.Addtional.Add(data);
-                        break;
-                }
-            }
-            return Create(directoryPath, outpath, entry, config);
-        }
-        public static bool Create(string directoryPath, string outpath, ProductEntry productEntry, Config.FilterFileConfig config = null)
-        {
-            var dir = new DirectoryInfo(directoryPath);
-            if (!dir.Exists)
-                throw new DirectoryNotFoundException();
-            directoryPath = dir.FullName;
-            //var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+            // Grab all files.
             var files = new PboArchive().GetFiles(directoryPath, config );
             var entries = new List<FileEntry>();
             foreach (string file in files)
             {
-                if(Path.GetFileName(file).StartsWith("$") && Path.GetFileName(file).EndsWith("$"))
+                if(System.IO.Path.GetFileName(file).StartsWith("$") && System.IO.Path.GetFileName(file).EndsWith("$"))
                     continue;
                 FileInfo info = new FileInfo(file);
                 string path = PboUtilities.GetRelativePath(info.FullName, directoryPath);
                 entries.Add(new FileEntry(path, 0x0, (ulong) info.Length, (ulong) (DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds, (ulong) info.Length));
             }
+
+            // Start writing pbo.
             try
             {
                 using (var stream = File.Create(outpath))
@@ -148,7 +156,7 @@ namespace SwiftPbo
                     foreach (var entry in entries)
                     {
                         var buffer = new byte[2949120];
-                        using (var open = File.OpenRead(Path.Combine(directoryPath, entry.FileName)))
+                        using (var open = File.OpenRead(System.IO.Path.Combine(directoryPath, entry.FileName)))
                         {
                             var read = 4324324;
                             while (read > 0)
@@ -182,17 +190,17 @@ namespace SwiftPbo
         public static string SterilizePath(string path)
         {
             
-            var arr = Path.GetDirectoryName(path).ToCharArray();
+            var arr = System.IO.Path.GetDirectoryName(path).ToCharArray();
             var builder = new StringBuilder(arr.Count());
-            string dirpath = Path.GetDirectoryName(path);
+            string dirpath = System.IO.Path.GetDirectoryName(path);
             for (int i = 0; i < dirpath.Length; i++)
             {
-                if (!InvaildPath.Contains(path[i]) && path[i] != Path.AltDirectorySeparatorChar)
+                if (!InvaildPath.Contains(path[i]) && path[i] != System.IO.Path.AltDirectorySeparatorChar)
                     builder.Append(path[i]);
-                if(path[i] == Path.AltDirectorySeparatorChar)
-                    builder.Append(Path.DirectorySeparatorChar);
+                if(path[i] == System.IO.Path.AltDirectorySeparatorChar)
+                    builder.Append(System.IO.Path.DirectorySeparatorChar);
             }
-            var filename = Path.GetFileName(path).ToCharArray();
+            var filename = System.IO.Path.GetFileName(path).ToCharArray();
             for (int i = 0; i < filename.Length; i++)
             {
                 var ch = filename[i];
@@ -202,7 +210,7 @@ namespace SwiftPbo
                 }
                 filename[i] = ((char)(Math.Min(90, 65 + ch % 5)));
             }
-            return Path.Combine(builder.ToString(), new string(filename));
+            return System.IO.Path.Combine(builder.ToString(), new string(filename));
         }
 
         private static List<char> _literalList = new List<char>() {'\'','\"','\\','\0','\a','\b','\f','\n','\r','\t','\v'};
@@ -215,8 +223,8 @@ namespace SwiftPbo
         {
             try
             {
-                if (!Directory.Exists(Path.GetDirectoryName(path)) && !string.IsNullOrEmpty(Path.GetDirectoryName(path)))
-                    Directory.CreateDirectory(Path.GetDirectoryName(path) );
+                if (!Directory.Exists(System.IO.Path.GetDirectoryName(path)) && !string.IsNullOrEmpty(System.IO.Path.GetDirectoryName(path)))
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) );
                 using (var stream = File.Create(path))
                 {
                     stream.WriteByte(0x0);
@@ -292,21 +300,23 @@ namespace SwiftPbo
         {
             PboUtilities.WriteString(stream, "sreV");
             stream.Write(new byte[15], 0, 15);
-            if (!string.IsNullOrEmpty(productEntry.Name))
-                PboUtilities.WriteString(stream, productEntry.Name);
-            else
-                return;
-            if (!string.IsNullOrEmpty(productEntry.Prefix))
+            if (!string.IsNullOrEmpty(productEntry.Prefix)) {
+                PboUtilities.WriteString(stream, "prefix");
                 PboUtilities.WriteString(stream, productEntry.Prefix);
+            }
             else
                 return;
             if (!string.IsNullOrEmpty(productEntry.ProductVersion))
+            {
+                PboUtilities.WriteString(stream, "version");
                 PboUtilities.WriteString(stream, productEntry.ProductVersion);
+            }
             else
                 return;
-            foreach (var str in productEntry.Addtional)
+            foreach (var additional in productEntry.Addtional)
             {
-                PboUtilities.WriteString(stream, str);
+                PboUtilities.WriteString(stream, additional.Name);
+                PboUtilities.WriteString(stream, additional.Value);
             }
         }
 
@@ -404,7 +414,7 @@ namespace SwiftPbo
                 stream.ReadByte();
                 count++;
             }
-            var list = new List<string>();
+            var list = new List<Additional>();
             var pboname = "";
             var version = "";
             var prefix = PboUtilities.ReadString(stream);
@@ -417,12 +427,14 @@ namespace SwiftPbo
 
                     if (!string.IsNullOrEmpty(version))
                     {
-                        while (stream.ReadByte() != 0x0)
-                        {
-                            stream.Position--;
-                            var s = PboUtilities.ReadString(stream);
-                            list.Add(s);
-                        }
+                        version = PboUtilities.ReadString(stream);
+                    }
+                    while (stream.ReadByte() != 0x0)
+                    {
+                        stream.Position--;
+                        var name = PboUtilities.ReadString(stream);
+                        var value = PboUtilities.ReadString(stream);
+                        list.Add(new Additional(name, value));
                     }
                 }
             }
@@ -445,9 +457,9 @@ namespace SwiftPbo
                     files++;
                     long totalread = (long)file.DataSize;
                     var pboPath =
-                        SterilizePath(Path.Combine(outpath, file.FileName));
-                    if (!Directory.Exists(Path.GetDirectoryName(pboPath)))
-                        Directory.CreateDirectory(Path.GetDirectoryName(pboPath));
+                        SterilizePath(System.IO.Path.Combine(outpath, file.FileName));
+                    if (!Directory.Exists(System.IO.Path.GetDirectoryName(pboPath)))
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(pboPath));
                     using (var outfile = File.Create(pboPath))
                     {
                         while (totalread > 0)
@@ -471,8 +483,8 @@ namespace SwiftPbo
             Stream mem = GetFileStream(fileEntry);
             if (mem == null)
                 throw new Exception("WTF no stream");
-            if (!Directory.Exists(Path.GetDirectoryName(outpath)))
-                Directory.CreateDirectory(Path.GetDirectoryName(outpath));
+            if (!Directory.Exists(System.IO.Path.GetDirectoryName(outpath)))
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(outpath));
             var totalread = fileEntry.DataSize;
             using (var outfile = File.OpenWrite(outpath))
             {

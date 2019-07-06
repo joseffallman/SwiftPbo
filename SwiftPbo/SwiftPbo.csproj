@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configs\FilterFileConfig.cs" />
+    <Compile Include="DetectArmaPath.cs" />
     <Compile Include="FileEntry.cs" />
     <Compile Include="PboArchive.cs" />
     <Compile Include="PboUtilities.cs" />

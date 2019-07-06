@@ -18,14 +18,14 @@ namespace SwiftPbo
         private string _name;
         private string _prefix;
         private string _productVersion;
-        private List<string> _addtional = new List<string>();
+        private List<Additional> _addtional = new List<Additional>();
 
         public ProductEntry()
         {
             _name = _prefix = _productVersion = "";
-            Addtional = new List<string>();
+            Addtional = new List<Additional>();
         }
-        public ProductEntry(string name, string prefix, string productVersion, List<string> addList = null)
+        public ProductEntry(string name, string prefix, string productVersion, List<Additional> addList = null)
         {
             Name = name;
             Prefix = prefix;
@@ -52,10 +52,19 @@ namespace SwiftPbo
             set { _productVersion = value; }
         }
 
-        public List<string> Addtional
+        public List<Additional> Addtional
         {
             get { return _addtional; }
             set { _addtional = value; }
+        }
+    }
+    public struct Additional
+    {
+        public string Name, Value;
+        public Additional(string var, string value)
+        {
+            Name = var;
+            Value = value;
         }
     }
 }

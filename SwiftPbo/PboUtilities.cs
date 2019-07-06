@@ -56,12 +56,12 @@ namespace SwiftPbo
             var pathUri = new Uri(filespec);
 
             // Folders must end in a slash
-            if (!folder.EndsWith(Path.DirectorySeparatorChar.ToString(CultureInfo.InvariantCulture)))
+            if (!folder.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString(CultureInfo.InvariantCulture)))
             {
-                folder += Path.DirectorySeparatorChar;
+                folder += System.IO.Path.DirectorySeparatorChar;
             }
             var folderUri = new Uri(folder);
-            return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString().Replace('/', Path.DirectorySeparatorChar));
+            return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString().Replace('/', System.IO.Path.DirectorySeparatorChar));
         }
 
         public static byte[] ReadStringArray(Stream reader)

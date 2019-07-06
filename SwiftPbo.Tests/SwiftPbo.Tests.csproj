@@ -395,12 +395,6 @@
     <None Include="testdata\FilterTestFiles\Tests\aFile.sqf" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SwiftPbo\SwiftPbo.csproj">
-      <Project>{8688a0f5-a404-4707-b98b-563213964e72}</Project>
-      <Name>SwiftPbo</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="script_component.hpp" />
     <Content Include="stringtable.xml" />
     <Content Include="testdata\cba_common\CfgEventHandlers.hpp">
@@ -424,6 +418,12 @@
     <Content Include="testdata\cba_common\stringtable.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SwiftPbo\SwiftPbo.csproj">
+      <Project>{8688a0f5-a404-4707-b98b-563213964e72}</Project>
+      <Name>SwiftPbo</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
